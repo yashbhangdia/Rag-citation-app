@@ -1,0 +1,31 @@
+Introduction to Retrieval-Augmented Generation (RAG)
+
+Retrieval-Augmented Generation (RAG) is a technique that combines information retrieval with large language model generation. It was introduced by Lewis et al. in 2020 and has become one of the most practical approaches for building knowledge-grounded AI systems.
+
+How RAG Works
+
+The RAG pipeline operates in three main stages. First, during the indexing phase, source documents are split into chunks and converted into dense vector embeddings using an encoder model. These embeddings are stored in a vector database.
+
+Second, during retrieval, when a user asks a question, the query is also embedded using the same encoder. The system then performs a nearest-neighbor search to find the most semantically similar chunks from the document store.
+
+Third, during generation, the retrieved chunks are passed as context to a large language model along with the original question. The LLM then generates an answer grounded in the retrieved evidence.
+
+Key Advantages of RAG
+
+RAG systems offer several important advantages over standard language models. They can access up-to-date information without retraining the model. They provide citations and traceable sources for generated answers. They reduce hallucinations by grounding responses in factual documents. They work well with domain-specific knowledge bases.
+
+Vector Databases
+
+A critical component of any RAG system is the vector database. Popular options include Chroma, Pinecone, Weaviate, FAISS, and Qdrant. ChromaDB is particularly popular for local development due to its simplicity and zero-configuration setup. It stores embeddings persistently on disk and supports metadata filtering.
+
+Embedding Models
+
+Embedding models convert text into dense numerical vectors. The BAAI/bge-small-en-v1.5 model is widely used for its strong performance on retrieval benchmarks. It produces 384-dimensional vectors and is licensed under the MIT license, making it suitable for commercial applications.
+
+Chunking Strategy
+
+The chunking strategy significantly impacts retrieval quality. Chunks that are too small may miss important context, while chunks that are too large may introduce noise. A chunk size of 500-1000 tokens with 100-200 token overlap is generally recommended for most documents.
+
+Citations in RAG
+
+One of the most important features of a production RAG system is citation generation. By assigning each retrieved chunk a reference number and instructing the LLM to cite sources using those numbers, the system can produce answers that are fully traceable to source documents. This is critical for applications in legal, medical, and academic domains.

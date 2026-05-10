@@ -1,0 +1,29 @@
+HuggingFace Inference API — Developer Guide
+
+Overview
+
+The HuggingFace Inference API provides free access to thousands of machine learning models hosted on the HuggingFace Hub. Developers can call models via simple HTTP requests without managing any infrastructure. The free tier offers generous rate limits suitable for development and small-scale production workloads.
+
+Getting Your API Token
+
+To use the HuggingFace Inference API, you need a free API token. Create an account at huggingface.co, navigate to your profile settings, and click on "Access Tokens". Create a new token with "read" permissions. This token is free and does not require a credit card.
+
+Recommended Free Models for RAG
+
+Several models work exceptionally well for RAG pipelines without requiring any special approval. HuggingFaceH4/zephyr-7b-beta is a 7-billion parameter instruction-tuned model that follows complex prompts reliably. Microsoft's Phi-3-mini-4k-instruct is a smaller but highly capable model that runs efficiently. These models are available immediately upon creating an account.
+
+Rate Limits on the Free Tier
+
+The free tier of the HuggingFace Inference API is rate-limited to prevent abuse. Users can make approximately 1,000 requests per day per model. Each request supports up to 8,000 input tokens and 1,024 output tokens. For higher throughput, HuggingFace offers paid inference endpoints with dedicated compute.
+
+Python Integration
+
+The huggingface_hub Python library provides a convenient InferenceClient class. You can initialize it with your model name and API token. The text_generation method accepts prompts and returns generated text. Streaming is supported via the stream=True parameter, which yields tokens as they are generated.
+
+ChromaDB Integration
+
+ChromaDB is an open-source vector database designed for AI applications. It stores embeddings as persistent collections on disk and supports cosine similarity search. The Python client library makes it easy to add documents, query for similar content, and filter by metadata. ChromaDB requires no external services and works entirely locally, making it ideal for development.
+
+Deploying on Streamlit Cloud
+
+Streamlit Cloud offers free hosting for Streamlit applications connected to public GitHub repositories. After pushing your code to GitHub, visit share.streamlit.io and connect your repository. You can add environment variables including your HuggingFace token securely through the Streamlit Cloud dashboard. The free tier provides one GB of RAM and runs indefinitely for public apps.
