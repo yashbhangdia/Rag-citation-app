@@ -20,7 +20,18 @@ from src.utils.citation_builder import (
 from .llm_client import HFInferenceClient
 from .prompts import build_prompt_for_model
 from configs.settings import settings
+import re
 
+def _strip_thinking(text: str) -> str:
+    """Remove <think>...</think> and [thinking]...[/thinking] blocks models emit."""
+    # Remove XML-style think blocks (DeepSeek, Qwen, etc.)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<thinking>.*?</thinking>", "", text, flags=re.DOTALL)
+    # Remove markdown-style reasoning blocks
+    text = re.sub(r"\[thinking\].*?\[/thinking\]", "", text, flags=re.DOTALL)
+    # Remove leftover "Step 1:", "Let me think..." preambles
+    text = re.sub(r"^(Let me (think|analyze|consider).*?\n)", "", text, flags=re.IGNORECASE)
+    return text.strip()
 
 class RAGPipeline:
     """
@@ -92,6 +103,7 @@ class RAGPipeline:
 
         # 4. Generate answer
         raw_answer = self.llm.generate(prompt)
+        raw_answer = _strip_thinking(raw_answer)  
         logger.info(f"Generated answer ({len(raw_answer)} chars)")
 
         # 5. Parse and return

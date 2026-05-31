@@ -19,6 +19,7 @@ from src.retrieval.vector_store import VectorStoreManager
 from src.generation.rag_pipeline import RAGPipeline
 from src.utils.citation_builder import CitationResult
 from configs.settings import settings
+from src.generation.rag_pipeline import _strip_thinking
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -332,17 +333,33 @@ else:
                     try:
                         pipeline: RAGPipeline = st.session_state.pipeline
 
+                        # Replace the streaming section in frontend/app.py with this:
+
                         if use_streaming:
-                            token_stream, citations = pipeline.query_stream(
-                                question, top_k=top_k
-                            )
+                            token_stream, citations = pipeline.query_stream(question, top_k=top_k)
                             full_answer = ""
+                            inside_think = False
+
                             for token in token_stream:
-                                full_answer += token
-                                answer_placeholder.markdown(
-                                    f'<div class="answer-block">{full_answer}▌</div>',
-                                    unsafe_allow_html=True
-                                )
+                                # Track when we enter/exit a think block
+                                if "<think>" in token or "<thinking>" in token:
+                                    inside_think = True
+                                if "</think>" in token or "</thinking>" in token:
+                                    inside_think = False
+                                    continue   # skip the closing tag token too
+
+                                if not inside_think:
+                                    full_answer += token
+                                    answer_placeholder.markdown(
+                                        f'<div class="answer-block">{full_answer}▌</div>',
+                                        unsafe_allow_html=True
+                                    )
+
+                            # Final clean pass in case a think block spanned multiple tokens
+                            full_answer = _strip_thinking(full_answer)
+                            from src.utils.citation_builder import parse_citations_from_answer
+                            result = parse_citations_from_answer(full_answer, citations)
+                            citations = result.used_citations()
                             answer_placeholder.markdown(
                                 f'<div class="answer-block">{full_answer}</div>',
                                 unsafe_allow_html=True
