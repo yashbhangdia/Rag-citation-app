@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Dict
 
-from langchain.schema import Document
+from src.langchain_compat import Document
 
 
 @dataclass

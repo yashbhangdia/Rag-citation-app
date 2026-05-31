@@ -13,7 +13,7 @@ import os
 
 from src.ingestion.document_loader import load_single_document
 from src.ingestion.chunker import chunk_documents
-from langchain.schema import Document
+from src.langchain_compat import Document
 
 
 @pytest.fixture

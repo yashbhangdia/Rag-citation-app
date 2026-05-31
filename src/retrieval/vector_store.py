@@ -13,7 +13,7 @@ from typing import List, Tuple
 from pathlib import Path
 from loguru import logger
 
-from langchain.schema import Document
+from src.langchain_compat import Document
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 

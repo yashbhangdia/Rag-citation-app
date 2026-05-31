@@ -10,7 +10,7 @@ Advanced retrieval strategies on top of the VectorStoreManager:
 from __future__ import annotations
 from typing import List, Optional, Dict, Any
 
-from langchain.schema import Document
+from src.langchain_compat import Document
 from loguru import logger
 
 from .vector_store import VectorStoreManager

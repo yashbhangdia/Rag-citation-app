@@ -7,8 +7,12 @@ metadata so every chunk carries enough context for citation generation.
 
 from typing import List
 from loguru import logger
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from src.langchain_compat import Document
+
+try:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+except ImportError:
+    from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
 
 from configs.settings import settings
 

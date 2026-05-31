@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from langchain.schema import Document
+from src.langchain_compat import Document
 from src.utils.citation_builder import (
     build_citations,
     build_context_block,

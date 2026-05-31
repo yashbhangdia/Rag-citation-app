@@ -10,7 +10,7 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     # HuggingFace
-    huggingface_api_token: str = Field(default="", alias="HUGGINGFACE_API_TOKEN")
+    huggingface_api_token: str = Field(default="", alias="HUGGINGFACEHUB_API_TOKEN")
 
     # Models
     embedding_model: str = Field(
@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     app_port: int = Field(default=8501, alias="APP_PORT")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
+    documents_dir: str = Field(default="./data/documents",alias="DOCUMENTS_DIR")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -54,5 +56,5 @@ settings = Settings()
 
 # Ensure directories exist
 Path(settings.chroma_persist_dir).mkdir(parents=True, exist_ok=True)
-Path("./data/documents").mkdir(parents=True, exist_ok=True)
+Path(settings.documents_dir).mkdir(parents=True, exist_ok=True)
 Path("./logs").mkdir(parents=True, exist_ok=True)

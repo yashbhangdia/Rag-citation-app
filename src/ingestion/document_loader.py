@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from loguru import logger
 
-from langchain.schema import Document
+from src.langchain_compat import Document
 from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,

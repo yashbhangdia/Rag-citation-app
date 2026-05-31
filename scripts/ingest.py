@@ -20,10 +20,9 @@ Usage:
 import argparse
 import sys
 from pathlib import Path
-
 # Allow running from project root
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
+from configs.settings import settings
 from loguru import logger
 from src.ingestion import load_single_document, load_directory, chunk_documents
 from src.retrieval.vector_store import VectorStoreManager
@@ -35,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--file", type=str, help="Path to a single document.")
-    group.add_argument("--dir",  type=str, help="Path to a directory of documents.")
+    group.add_argument("--dir",  type=str, default=settings.documents_dir, help="Path to a directory of documents.")
     group.add_argument("--list", action="store_true",
                        help="List all indexed documents.")
 
