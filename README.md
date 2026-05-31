@@ -2,8 +2,8 @@
 
 A production-ready **Retrieval-Augmented Generation** application that answers questions from your documents with precise inline citations. Built with HuggingFace (free), ChromaDB, and Streamlit.
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue?style=flat-square&logo=python)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.40-red?style=flat-square&logo=streamlit)
+![Python](https://img.shields.io/badge/Python-3.14+-blue?style=flat-square&logo=python)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.57.0-red?style=flat-square&logo=streamlit)
 ![HuggingFace](https://img.shields.io/badge/HuggingFace-Free_API-yellow?style=flat-square&logo=huggingface)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-Local-green?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)
