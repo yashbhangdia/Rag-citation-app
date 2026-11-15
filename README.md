@@ -1,243 +1,53 @@
-# 📚 RAG Citation Assistant
+# 📊 FinSight AI — cited answers from Indian financial filings
 
-A production-ready **Retrieval-Augmented Generation** application that answers questions from your documents with precise inline citations. Built with HuggingFace (free), ChromaDB, and Streamlit.
+Ask questions about annual reports, quarterly results and SEBI/RBI circulars and get answers where **every figure is cited to a page and checked against the source text**. Free to run: open models on a Colab GPU, no paid API.
 
-![Python](https://img.shields.io/badge/Python-3.14+-blue?style=flat-square&logo=python)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.57.0-red?style=flat-square&logo=streamlit)
-![HuggingFace](https://img.shields.io/badge/HuggingFace-Free_API-yellow?style=flat-square&logo=huggingface)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-Local-green?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)
-
----
-
-## ✨ Features
-
-- 📄 **Multi-format ingestion** — PDF, TXT, DOCX, Markdown
-- 🔍 **Semantic search** with MMR retrieval diversity
-- 🤖 **Free LLM inference** via HuggingFace API (no credit card)
-- 📎 **Inline citations** — every claim traced back to source + page
-- 💬 **Streamlit chat UI** with streaming responses
-- 🗄️ **Local ChromaDB** — persists between runs, no cloud needed
-- 🚀 **One-command deploy** to Streamlit Cloud
-
----
-
-## 🏗 Architecture
+## How it works
 
 ```
-User Question
-     │
-     ▼
-┌──────────────────────┐
-│   Streamlit UI        │  frontend/app.py
-└──────────┬───────────┘
-           │
-     ┌─────▼─────────────────────────────────────┐
-     │              RAG Pipeline                  │  src/generation/rag_pipeline.py
-     │                                            │
-     │  1. Retrieve top-k chunks (MMR/cosine)    │
-     │  2. Build numbered context block          │
-     │  3. Format model-specific prompt          │
-     │  4. Call HuggingFace Inference API        │
-     │  5. Parse [N] citation markers            │
-     └────┬──────────────────────────┬───────────┘
-          │                          │
-   ┌──────▼──────┐           ┌───────▼──────────┐
-   │  ChromaDB   │           │ HuggingFace API  │
-   │  (local)    │           │ zephyr-7b / phi3 │
-   └─────────────┘           └──────────────────┘
+question ──► (follow-up rewrite) ──► hybrid retrieval ──► cross-encoder rerank ──► LLM ──► citation verification
+              uses chat history      dense + BM25 (RRF)     top-k chunks, [1]..[k]   Qwen2.5   ✅ / ⚠️ per citation
+                                     + company filter
 ```
 
----
+| Stage | What it does | Code |
+|---|---|---|
+| Ingestion | pymupdf4llm per-page extraction (real PDF page numbers), company / doc-type / FY from the filename, 1200-char financial chunks | `src/ingestion/` |
+| Retrieval | Dense (bge-small) + BM25 fused with reciprocal-rank-fusion; a question naming one company is filtered to it, a comparison ("TCS vs Infosys") is retrieved per company | `src/retrieval/retriever.py` |
+| Rerank | Cross-encoder keeps the best `k` chunks | `src/retrieval/reranker.py` |
+| Generate | Pluggable free backends (below), model's chat template applied once | `src/generation/` |
+| Verify | `[N]` outside the context is dropped; every figure in a cited sentence must literally appear in the cited chunk; relevance score checked; the citation snippet becomes the best-supporting sentence; figures with no citation are flagged | `src/utils/citation_builder.py` |
 
-## 🚀 Quick Start
+### LLM backends (`LLM_BACKEND`)
+* `transformers` (default) — Qwen2.5-7B-Instruct, 4-bit, in-process on a CUDA GPU (Colab T4). Falls back to Qwen2.5-3B without CUDA. No key.
+* `hf_api` — HuggingFace Inference Providers with a free token (`HUGGINGFACEHUB_API_TOKEN`); subject to free-tier limits.
 
-### 1. Clone & Setup
+## Run on Colab (recommended)
+1. Push this repo to GitHub.
+2. Open `notebooks/finsight_colab.ipynb` in Colab, set **Runtime → T4 GPU**, run all cells. It clones the repo, installs `requirements-colab.txt`, stores the index and PDFs on your Drive, ingests, and opens a Gradio chat with a public link.
+3. Changed code locally? Push and re-run the first cell.
 
+## Run locally
 ```bash
-# Clone the repository
-git clone https://github.com/YOUR_USERNAME/rag-citation-app.git
-cd rag-citation-app
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-
-# Install dependencies
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env            # set LLM_BACKEND=hf_api and a HF token on a laptop without a GPU
+python scripts/download_documents.py --all     # sample filings (PDFs are not committed)
+python scripts/ingest.py --dir data/documents
+streamlit run frontend/app.py   # or: python frontend/gradio_app.py
 ```
 
-### 2. Configure Environment
-
+## Quality checks
 ```bash
-# Copy the template
-cp .env.example .env
-
-# Edit .env and add your HuggingFace token
-# Get a FREE token at: https://huggingface.co/settings/tokens
-nano .env     # or open in your editor
+pytest tests/                   # unit tests (verification, retrieval, page numbering, ingestion)
+python scripts/eval.py          # retrieval hit@k on eval/questions.jsonl
+python scripts/eval.py --generate   # + share of citations whose figures verify
 ```
+`eval/questions.jsonl` is small — add questions (with the expected PDF page) for your own filings; it is only as good as that set.
 
-Your `.env` should look like:
-```env
-HUGGINGFACE_API_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx
-LLM_MODEL=HuggingFaceH4/zephyr-7b-beta
-EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
-```
-
-### 3. Ingest Documents
-
-```bash
-# Index the sample documents (included)
-python scripts/ingest.py --dir data/documents/
-
-# Or index your own files
-python scripts/ingest.py --file /path/to/your/document.pdf
-
-# Check what's indexed
-python scripts/ingest.py --list
-```
-
-### 4. Run the App
-
-```bash
-streamlit run frontend/app.py
-```
-
-Open http://localhost:8501 and start asking questions!
-
----
-
-## 📁 Project Structure
-
-```
-rag-citation-app/
-├── frontend/
-│   └── app.py                  # Streamlit UI
-├── src/
-│   ├── ingestion/
-│   │   ├── document_loader.py  # PDF, TXT, DOCX, MD loading
-│   │   └── chunker.py          # Overlapping chunk strategy
-│   ├── retrieval/
-│   │   ├── vector_store.py     # ChromaDB manager
-│   │   └── retriever.py        # MMR + similarity search
-│   ├── generation/
-│   │   ├── llm_client.py       # HuggingFace Inference API
-│   │   ├── prompts.py          # Model-specific prompt templates
-│   │   └── rag_pipeline.py     # End-to-end orchestration
-│   └── utils/
-│       └── citation_builder.py # Citation objects & formatting
-├── configs/
-│   └── settings.py             # Pydantic config with .env loading
-├── scripts/
-│   └── ingest.py               # CLI ingestion tool
-├── tests/
-│   ├── test_ingestion.py
-│   └── test_citations.py
-├── data/
-│   └── documents/              # Put your documents here
-├── .streamlit/
-│   └── config.toml             # Streamlit theme
-├── .env.example                # Environment template
-├── requirements.txt
-└── README.md
-```
-
----
-
-## 🤖 Free LLM Options
-
-| Model | Quality | Speed | Needs Approval |
-|-------|---------|-------|----------------|
-| `HuggingFaceH4/zephyr-7b-beta` | ⭐⭐⭐⭐ | Medium | ❌ No |
-| `microsoft/Phi-3-mini-4k-instruct` | ⭐⭐⭐ | Fast | ❌ No |
-| `mistralai/Mistral-7B-Instruct-v0.3` | ⭐⭐⭐⭐⭐ | Medium | ✅ Yes |
-| `meta-llama/Meta-Llama-3-8B-Instruct` | ⭐⭐⭐⭐⭐ | Medium | ✅ Yes |
-
-Change the model in `.env`:
-```env
-LLM_MODEL=microsoft/Phi-3-mini-4k-instruct
-```
-
----
-
-## 🌐 Deploy for Free
-
-### Option A: Streamlit Cloud (Easiest)
-
-1. Push your repo to GitHub (make sure `.env` is in `.gitignore`)
-2. Go to [share.streamlit.io](https://share.streamlit.io)
-3. Connect your GitHub repo
-4. Set **Main file path**: `frontend/app.py`
-5. Add secrets under **Advanced settings**:
-   ```toml
-   HUGGINGFACE_API_TOKEN = "hf_xxxx"
-   ```
-6. Click **Deploy** — live in ~2 minutes!
-
-> ⚠️ Note: Streamlit Cloud's free tier has 1GB RAM. Use a smaller embedding model (`all-MiniLM-L6-v2`) and pre-index documents locally, then commit the `data/chroma_db/` folder to the repo.
-
-### Option B: Hugging Face Spaces
-
-1. Create a new Space at [huggingface.co/spaces](https://huggingface.co/spaces)
-2. Select **Streamlit** SDK
-3. Push your code; add `HUGGINGFACE_API_TOKEN` in Space secrets
-
-### Option C: Render.com
-
-```bash
-# render.yaml already handles everything
-# Just connect your GitHub repo at render.com
-```
-
----
-
-## 🧪 Running Tests
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# With coverage
-pytest tests/ -v --cov=src --cov-report=term-missing
-```
-
----
-
-## 🔧 Ingestion CLI Reference
-
-```bash
-# Single file
-python scripts/ingest.py --file report.pdf
-
-# Full directory (recursive)
-python scripts/ingest.py --dir data/documents/
-
-# Custom chunk size
-python scripts/ingest.py --dir data/ --chunk-size 600 --chunk-overlap 100
-
-# Reset and re-index everything
-python scripts/ingest.py --dir data/ --reset
-
-# List all indexed documents
-python scripts/ingest.py --list
-```
-
----
-
-## 🗺 Roadmap (Production Enhancements)
-
-- [ ] Re-ranking with cross-encoder models
-- [ ] Hybrid search (BM25 + dense)
-- [ ] Multi-turn conversation memory
-- [ ] Document management UI (delete individual files)
-- [ ] Export citations as BibTeX / APA
-- [ ] REST API backend (FastAPI)
-- [ ] Async ingestion pipeline
-- [ ] Qdrant Cloud migration for scale
-
----
-
-## 📄 License
-
-MIT — free for personal and commercial use.
+## Known limits
+* Verification checks that figures **appear in the cited chunk** and that it is topically relevant. It cannot prove the sentence is *semantically* entailed by the passage, so ⚠️ means "check", ✅ means "figures found", not "guaranteed correct".
+* Scanned PDFs without a text layer are not OCR'd.
+* Tables are extracted as markdown by pymupdf4llm; very complex multi-column tables can still lose structure.
+* A 7B 4-bit model is weaker than frontier models at multi-step financial arithmetic — it is told to copy figures, not compute them.
+* Fiscal-year filtering is left to the reranker (filename "FY2024-25" vs question "FY25" are different strings).

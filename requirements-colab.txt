@@ -1,0 +1,23 @@
+# Colab ships torch / numpy / pandas — don't reinstall or pin them.
+transformers>=4.48
+sentence-transformers>=3.0
+accelerate
+bitsandbytes
+huggingface-hub>=0.33
+
+langchain-core
+langchain-community
+langchain-text-splitters
+langchain-chroma
+chromadb
+rank-bm25
+
+pymupdf4llm
+pypdf
+docx2txt
+
+pydantic-settings
+python-dotenv
+loguru
+tqdm
+gradio

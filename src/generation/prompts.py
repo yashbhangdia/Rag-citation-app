@@ -1,106 +1,63 @@
 """
 src/generation/prompts.py
+Finance-domain prompt — optimised for due diligence on Indian filings.
 
-Prompt templates for the RAG citation pipeline.
-Designed to work well with instruction-tuned open-source models.
+Backends receive chat *messages*; the model's own chat template is applied once,
+by the backend. No hand-written model tokens here.
 """
 
-# ── System instruction injected at the top of every prompt ──────────────────
-SYSTEM_PROMPT = """You are a precise research assistant. Answer questions using ONLY the provided context.
+from __future__ import annotations
 
-STRICT OUTPUT FORMAT — follow exactly:
-1. Write a direct, concise answer in plain prose.
-2. Cite sources inline using [N] only when that source directly supports the specific claim.
-3. Only cite a source if you actually used information from it. Do NOT cite all sources by default.
-4. After your answer, list only the sources you cited under a "References" header.
-5. Do NOT include any reasoning, thinking steps, or internal monologue in your response.
-6. Do NOT start with phrases like "Based on the context..." or "According to the provided passages..."
-7. If the context does not contain the answer, say: "The provided documents don't contain enough information to answer this."
+from typing import Dict, List, Optional
 
-OUTPUT ONLY the final answer with inline citations. Nothing else."""
+SYSTEM_PROMPT = """You are a financial analyst assistant specializing in Indian public markets.
+You help with due diligence on company filings, financial statements, investor presentations, and regulatory documents.
 
-
-# ── Main RAG prompt template ─────────────────────────────────────────────────
-RAG_PROMPT_TEMPLATE = """{system}
-
----
-CONTEXT PASSAGES:
-{context}
-
----
-QUESTION: {question}
-
-ANSWER (use [N] citation markers for every fact):"""
+RULES:
+1. Answer using ONLY the numbered context passages [1], [2], ... provided by the user.
+2. Cite EVERY figure, claim, or regulatory reference with its passage number, e.g. "Revenue was ₹2,40,893 crore [2]."
+3. Copy numbers exactly as written in the passage (units, commas, decimals). Never round, convert or infer figures.
+4. Only cite a passage that literally supports the sentence. Use only numbers that exist in the passages.
+5. If the passages do not contain the answer, say exactly: "This information is not available in the provided documents."
+6. For comparisons across companies, use one labelled bullet per company, each cited.
+7. Output only the final answer — no reasoning steps. End with a one-line key takeaway when you gave an analysis."""
 
 
-def build_rag_prompt(context: str, question: str) -> str:
-    """
-    Construct the full RAG prompt.
-
-    Args:
-        context:  Pre-formatted numbered context block from citation_builder.
-        question: User's query string.
-
-    Returns:
-        Complete prompt string ready for the LLM.
-    """
-    return RAG_PROMPT_TEMPLATE.format(
-        system=SYSTEM_PROMPT,
-        context=context,
-        question=question,
-    )
+def build_user_message(context: str, question: str) -> str:
+    return f"CONTEXT PASSAGES:\n{context}\n\nQUESTION: {question}\n\nAnswer (cite every fact with [N]):"
 
 
-# ── Zephyr / ChatML format wrapper ───────────────────────────────────────────
-def wrap_for_zephyr(prompt: str) -> str:
-    """
-    Wrap prompt in Zephyr's <|system|>/<|user|>/<|assistant|> format.
-    Required for HuggingFaceH4/zephyr-7b-beta to follow instructions.
-    """
-    return (
-        f"<|system|>\n{SYSTEM_PROMPT}</s>\n"
-        f"<|user|>\n"
-        f"CONTEXT PASSAGES:\n{{context}}\n\n"
-        f"QUESTION: {{question}}</s>\n"
-        f"<|assistant|>\n"
-    )
-
-
-def build_zephyr_prompt(context: str, question: str) -> str:
-    """Builds a Zephyr-formatted RAG prompt."""
-    return (
-        f"<|system|>\n{SYSTEM_PROMPT}</s>\n"
-        f"<|user|>\n"
-        f"CONTEXT PASSAGES:\n{context}\n\n"
-        f"QUESTION: {question}</s>\n"
-        f"<|assistant|>\n"
-    )
-
-
-def build_phi3_prompt(context: str, question: str) -> str:
-    """Builds a Phi-3 formatted RAG prompt."""
-    return (
-        f"<|system|>\n{SYSTEM_PROMPT}<|end|>\n"
-        f"<|user|>\n"
-        f"CONTEXT PASSAGES:\n{context}\n\n"
-        f"QUESTION: {question}<|end|>\n"
-        f"<|assistant|>\n"
-    )
-
-
-# Model-to-formatter mapping
-PROMPT_FORMATTERS = {
-    "HuggingFaceH4/zephyr-7b-beta":          build_zephyr_prompt,
-    "microsoft/Phi-3-mini-4k-instruct":       build_phi3_prompt,
-    "mistralai/Mistral-7B-Instruct-v0.3":     build_rag_prompt,
-}
-
-
-def build_prompt_for_model(
-    model_name: str,
+def build_messages(
     context: str,
     question: str,
-) -> str:
-    """Auto-select the correct prompt format for a given model."""
-    formatter = PROMPT_FORMATTERS.get(model_name, build_rag_prompt)
-    return formatter(context, question)
+    history: Optional[List[Dict[str, str]]] = None,
+    max_history_turns: int = 3,
+) -> List[Dict[str, str]]:
+    """
+    system + (last few Q/A turns, answers only without context) + user(context, question).
+    """
+    msgs: List[Dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for turn in (history or [])[-max_history_turns:]:
+        msgs.append({"role": "user", "content": turn["question"]})
+        msgs.append({"role": "assistant", "content": turn["answer"]})
+    msgs.append({"role": "user", "content": build_user_message(context, question)})
+    return msgs
+
+
+REWRITE_SYSTEM = (
+    "Rewrite the user's last question as a single standalone search query, using the "
+    "chat history to resolve pronouns and omitted company names or years. "
+    "Output only the rewritten question."
+)
+
+
+def build_rewrite_messages(
+    question: str, history: List[Dict[str, str]], max_history_turns: int = 2
+) -> List[Dict[str, str]]:
+    hist = "\n".join(
+        f"Q: {t['question']}\nA: {t['answer'][:300]}" for t in history[-max_history_turns:]
+    )
+    return [
+        {"role": "system", "content": REWRITE_SYSTEM},
+        {"role": "user", "content": f"Chat history:\n{hist}\n\nLast question: {question}"},
+    ]

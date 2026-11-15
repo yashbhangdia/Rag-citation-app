@@ -1,0 +1,4 @@
+{"q": "What was TCS's total revenue in FY25?", "company": "TCS", "expect_page": [8], "file": "TCS_QUARTERLY_RESULTS.pdf", "expect_text": "2.55 Tn"}
+{"q": "What was TCS's revenue in Q4 FY25?", "company": "TCS", "expect_page": [4], "file": "TCS_QUARTERLY_RESULTS.pdf", "expect_text": "644,790"}
+{"q": "What was TCS's year-over-year revenue growth in FY 2025?", "company": "TCS", "expect_page": [22], "file": "TCS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "revenue growth of 6.0%"}
+{"q": "On which day do employees place bids in an OFS under the SEBI circular on offer for sale?", "company": "SEBI", "expect_page": [1, 2], "file": "SEBI_Circular_Mutual_Funds_FY2024.pdf", "expect_text": "cut-off price"}

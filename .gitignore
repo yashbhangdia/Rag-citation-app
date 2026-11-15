@@ -42,6 +42,8 @@ htmlcov/
 # Streamlit
 .streamlit/secrets.toml
 
-# Jupyter
+# Jupyter (notebooks/ are committed; only checkpoints are ignored)
 .ipynb_checkpoints/
-*.ipynb
+
+# Downloaded filings — re-fetch with scripts/download_documents.py
+data/documents/**/*.pdf

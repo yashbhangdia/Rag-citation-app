@@ -1,141 +1,139 @@
 """
 src/generation/rag_pipeline.py
 
-The main RAG pipeline that ties retrieval + generation together.
-Exposes a simple .query() method for the frontend to call.
+Retrieve → rerank → generate → verify citations.
+`query` and `query_stream` share one retrieval path so they number and rank
+citations identically.
 """
 
 from __future__ import annotations
-from typing import Optional, Iterator
+
+import re
+from typing import Dict, Iterator, List, Optional, Tuple
+
 from loguru import logger
 
-from src.retrieval.vector_store import VectorStoreManager
+from configs.settings import settings
+from src.retrieval.reranker import CrossEncoderReranker, get_reranker
 from src.retrieval.retriever import RAGRetriever
+from src.retrieval.vector_store import VectorStoreManager
 from src.utils.citation_builder import (
+    Citation,
+    CitationResult,
     build_citations,
     build_context_block,
     parse_citations_from_answer,
-    CitationResult,
+    verify_citations,
 )
-from .llm_client import HFInferenceClient
-from .prompts import build_prompt_for_model
-from configs.settings import settings
-import re
+
+from .llm_client import BaseLLM, get_llm
+from .prompts import build_messages, build_rewrite_messages
+
+NO_ANSWER = "I couldn't find any relevant information in the indexed documents."
+History = List[Dict[str, str]]
+
 
 def _strip_thinking(text: str) -> str:
-    """Remove <think>...</think> and [thinking]...[/thinking] blocks models emit."""
-    # Remove XML-style think blocks (DeepSeek, Qwen, etc.)
+    """Remove <think>…</think> style reasoning blocks some models emit."""
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
     text = re.sub(r"<thinking>.*?</thinking>", "", text, flags=re.DOTALL)
-    # Remove markdown-style reasoning blocks
     text = re.sub(r"\[thinking\].*?\[/thinking\]", "", text, flags=re.DOTALL)
-    # Remove leftover "Step 1:", "Let me think..." preambles
-    text = re.sub(r"^(Let me (think|analyze|consider).*?\n)", "", text, flags=re.IGNORECASE)
     return text.strip()
 
+
 class RAGPipeline:
-    """
-    End-to-end RAG pipeline with citation support.
-
-    Usage
-    -----
-    >>> pipeline = RAGPipeline()
-    >>> result = pipeline.query("What is the deadline for tax filing?")
-    >>> print(result.format_full_response())
-    """
-
     def __init__(
         self,
         vector_store: Optional[VectorStoreManager] = None,
-        llm_client: Optional[HFInferenceClient] = None,
-        retrieval_strategy: str = "mmr",
+        llm_client: Optional[BaseLLM] = None,
+        retrieval_strategy: str = "hybrid",
         top_k: Optional[int] = None,
+        reranker: Optional[CrossEncoderReranker] = None,
     ) -> None:
         self.vsm = vector_store or VectorStoreManager()
         self.retriever = RAGRetriever(self.vsm)
-        self.llm = llm_client or HFInferenceClient()
+        self.llm = llm_client or get_llm()
         self.strategy = retrieval_strategy
         self.top_k = top_k or settings.top_k_results
+        self.reranker = reranker or get_reranker()
         logger.info("RAGPipeline initialised.")
 
-    # ── Main entry points ─────────────────────────────────────────────────────
+    # ── shared retrieval path ────────────────────────────────────────────────
+
+    def _standalone_question(self, question: str, history: Optional[History]) -> str:
+        """Resolve follow-ups ('and for Infosys?') into a standalone search query."""
+        if not history:
+            return question
+        try:
+            out = _strip_thinking(self.llm.generate(
+                build_rewrite_messages(question, history), max_new_tokens=80
+            )).strip().splitlines()[0]
+            return out or question
+        except Exception as exc:  # rewriting is best-effort
+            logger.warning(f"Query rewrite failed ({exc}); using original question.")
+            return question
+
+    def retrieve(
+        self, question: str, top_k: Optional[int] = None, strategy: Optional[str] = None
+    ) -> Tuple[list, list]:
+        """Returns (reranked chunks, citations) — numbering is final from here on."""
+        k = top_k or self.top_k
+        candidates = self.retriever.retrieve(
+            question,
+            k=max(settings.retrieval_candidates, k),
+            strategy=strategy or self.strategy,
+        )
+        chunks = self.reranker.rerank(question, candidates, top_n=k)
+        return chunks, build_citations(chunks)
+
+    def _support_scorer(self):
+        return lambda claim, text: self.reranker.score(claim, text)
+
+    def _finish(self, raw_answer: str, citations: List[Citation]) -> CitationResult:
+        result = parse_citations_from_answer(_strip_thinking(raw_answer), citations)
+        return verify_citations(
+            result, scorer=self._support_scorer(), min_score=settings.min_support_score
+        )
+
+    # ── entry points ─────────────────────────────────────────────────────────
 
     def query(
         self,
         question: str,
         top_k: Optional[int] = None,
         strategy: Optional[str] = None,
+        history: Optional[History] = None,
     ) -> CitationResult:
-        """
-        Full RAG cycle: retrieve → format context → generate → parse citations.
-
-        Args:
-            question: Natural-language question.
-            top_k:    Override number of retrieved chunks.
-            strategy: Override retrieval strategy ("similarity" | "mmr").
-
-        Returns:
-            CitationResult with .answer, .citations, .format_full_response()
-        """
-        k = top_k or self.top_k
-        strat = strategy or self.strategy
-
-        # 1. Retrieve relevant chunks
-        chunks = self.retriever.retrieve(question, k=k, strategy=strat)
+        search_q = self._standalone_question(question, history)
+        chunks, citations = self.retrieve(search_q, top_k, strategy)
         if not chunks:
-            logger.warning("No chunks retrieved — returning empty response.")
-            return CitationResult(
-                answer="I couldn't find any relevant information in the indexed documents.",
-                citations=[],
-            )
+            return CitationResult(answer=NO_ANSWER, citations=[])
 
-        # 2. Build citation objects & context string
-        citations = build_citations(chunks)
-        context = build_context_block(chunks)
-
-        # 3. Build model-specific prompt
-        prompt = build_prompt_for_model(
-            model_name=self.llm.model,
-            context=context,
-            question=question,
-        )
-        logger.debug(f"Prompt length: {len(prompt)} chars")
-
-        # 4. Generate answer
-        raw_answer = self.llm.generate(prompt)
-        raw_answer = _strip_thinking(raw_answer)  
-        logger.info(f"Generated answer ({len(raw_answer)} chars)")
-
-        # 5. Parse and return
-        return parse_citations_from_answer(raw_answer, citations)
+        messages = build_messages(build_context_block(chunks), question, history)
+        raw = self.llm.generate(messages)
+        logger.info(f"Generated answer ({len(raw)} chars)")
+        return self._finish(raw, citations)
 
     def query_stream(
         self,
         question: str,
         top_k: Optional[int] = None,
-    ) -> tuple[Iterator[str], list]:
+        strategy: Optional[str] = None,
+        history: Optional[History] = None,
+    ) -> Tuple[Iterator[str], List[Citation]]:
         """
-        Streaming version — returns (token_iterator, citations_list).
-        The iterator yields tokens as they stream from the model.
-
-        Usage in Streamlit:
-            token_stream, citations = pipeline.query_stream(question)
-            answer = st.write_stream(token_stream)
+        Returns (token_iterator, citations). When the stream is exhausted, call
+        ``finish(full_text, citations)`` to get the verified CitationResult.
         """
-        k = top_k or self.top_k
-        chunks = self.retriever.retrieve(question, k=k, strategy=self.strategy)
-
+        search_q = self._standalone_question(question, history)
+        chunks, citations = self.retrieve(search_q, top_k, strategy)
         if not chunks:
-            def _empty():
-                yield "I couldn't find any relevant information in the indexed documents."
-            return _empty(), []
+            return iter([NO_ANSWER]), []
+        messages = build_messages(build_context_block(chunks), question, history)
+        return self.llm.generate_stream(messages), citations
 
-        citations = build_citations(chunks)
-        context = build_context_block(chunks)
-        prompt = build_prompt_for_model(
-            model_name=self.llm.model,
-            context=context,
-            question=question,
-        )
-
-        return self.llm.generate_stream(prompt), citations
+    def finish(self, full_text: str, citations: List[Citation]) -> CitationResult:
+        """Verify a streamed answer (the streaming counterpart of ``query``)."""
+        if not citations:
+            return CitationResult(answer=full_text, citations=[])
+        return self._finish(full_text, citations)

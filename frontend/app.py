@@ -4,27 +4,32 @@ frontend/app.py
 Streamlit frontend for the RAG Citation Assistant.
 Run with: streamlit run frontend/app.py
 """
-
+import os
 import sys
+
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import streamlit as st
 import tempfile
-import os
 from loguru import logger
 
 from src.ingestion import load_single_document, chunk_documents
 from src.retrieval.vector_store import VectorStoreManager
 from src.generation.rag_pipeline import RAGPipeline
 from src.utils.citation_builder import CitationResult
+from src.utils.render import (
+    answer_html, citation_card_html, visible_text, warnings_for,
+)
 from configs.settings import settings
-from src.generation.rag_pipeline import _strip_thinking
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title=settings.app_title,
-    page_icon="📚",
+    page_title="FinSight AI",           # ← browser tab text
+    page_icon="📊",                     # ← browser tab icon (any emoji)
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -164,7 +169,7 @@ if "pipeline" not in st.session_state:
             vector_store=st.session_state.vsm
         )
         st.session_state.pipeline_ready = True
-    except ValueError as e:
+    except Exception as e:  # missing token / no GPU / model download failure
         st.session_state.pipeline = None
         st.session_state.pipeline_ready = False
         st.session_state.pipeline_error = str(e)
@@ -174,14 +179,7 @@ if "chat_history" not in st.session_state:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def render_citation_card(citation) -> str:
-    return f"""
-<div class="citation-card">
-    <span class="ci-index">[{citation.index}]</span>
-    <span class="ci-file"> {citation.file_name}</span>
-    <span class="ci-page"> — Page {citation.page}/{citation.total_pages}</span>
-    <div class="ci-snippet">{citation.snippet}</div>
-</div>
-"""
+    return citation_card_html(citation)
 
 
 def render_stat_pill(label: str, value) -> str:
@@ -192,8 +190,8 @@ def render_stat_pill(label: str, value) -> str:
 st.markdown("""
 <div class="app-header">
     <div>
-        <h1>📚 RAG Citation Assistant</h1>
-        <p>Ask questions about your documents — every answer is backed by precise citations.</p>
+        <h1>FinSight AI</h1>
+        <p>Instant due diligence on company filings, financial statements, and market reports — every insight cited to the source.</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -203,7 +201,8 @@ st.markdown("""
 with st.sidebar:
     st.markdown('<div class="section-title">⚙ Configuration</div>', unsafe_allow_html=True)
 
-    model_display = settings.llm_model.split("/")[-1]
+    _pl = st.session_state.get("pipeline")
+    model_display = (_pl.llm.model if _pl else settings.llm_backend).split("/")[-1]
     embed_display = settings.embedding_model.split("/")[-1]
 
     st.markdown(
@@ -280,8 +279,8 @@ with st.sidebar:
     top_k = st.slider("Retrieved chunks (k)", 1, 10, settings.top_k_results)
     strategy = st.selectbox(
         "Retrieval strategy",
-        ["mmr", "similarity"],
-        help="MMR gives diverse results; similarity is fastest."
+        ["hybrid", "mmr", "similarity"],
+        help="Hybrid (dense + BM25) is best for exact figures; MMR adds diversity; similarity is fastest."
     )
     use_streaming = st.toggle("Stream response", value=True)
 
@@ -295,8 +294,9 @@ with st.sidebar:
 if not st.session_state.get("pipeline_ready", True):
     st.error(
         f"⚠️  Pipeline not ready: {st.session_state.get('pipeline_error', 'Unknown error')}\n\n"
-        "Add your `HUGGINGFACE_API_TOKEN` to the `.env` file and restart the app.\n\n"
-        "Get a free token at: https://huggingface.co/settings/tokens"
+        "Set `LLM_BACKEND=hf_api` plus `HUGGINGFACEHUB_API_TOKEN` in `.env` "
+        "(free token: https://huggingface.co/settings/tokens), or run on a GPU "
+        "(see notebooks/finsight_colab.ipynb) with `LLM_BACKEND=transformers`."
     )
     st.stop()
 
@@ -305,7 +305,7 @@ for entry in st.session_state.chat_history:
     with st.chat_message("user"):
         st.write(entry["question"])
     with st.chat_message("assistant"):
-        st.markdown(f'<div class="answer-block">{entry["answer"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="answer-block">{answer_html(entry["answer"])}</div>', unsafe_allow_html=True)
         if entry.get("citations"):
             with st.expander(f"📎 {len(entry['citations'])} source(s) cited", expanded=False):
                 for c in entry["citations"]:
@@ -332,52 +332,34 @@ else:
                 with st.spinner("Retrieving relevant passages…"):
                     try:
                         pipeline: RAGPipeline = st.session_state.pipeline
-
-                        # Replace the streaming section in frontend/app.py with this:
+                        history = st.session_state.chat_history
 
                         if use_streaming:
-                            token_stream, citations = pipeline.query_stream(question, top_k=top_k)
-                            full_answer = ""
-                            inside_think = False
-
-                            for token in token_stream:
-                                # Track when we enter/exit a think block
-                                if "<think>" in token or "<thinking>" in token:
-                                    inside_think = True
-                                if "</think>" in token or "</thinking>" in token:
-                                    inside_think = False
-                                    continue   # skip the closing tag token too
-
-                                if not inside_think:
-                                    full_answer += token
-                                    answer_placeholder.markdown(
-                                        f'<div class="answer-block">{full_answer}▌</div>',
-                                        unsafe_allow_html=True
-                                    )
-
-                            # Final clean pass in case a think block spanned multiple tokens
-                            full_answer = _strip_thinking(full_answer)
-                            from src.utils.citation_builder import parse_citations_from_answer
-                            result = parse_citations_from_answer(full_answer, citations)
-                            citations = result.used_citations()
-                            answer_placeholder.markdown(
-                                f'<div class="answer-block">{full_answer}</div>',
-                                unsafe_allow_html=True
+                            token_stream, citations = pipeline.query_stream(
+                                question, top_k=top_k, strategy=strategy, history=history
                             )
+                            streamed = ""
+                            for token in token_stream:
+                                streamed += token
+                                answer_placeholder.markdown(
+                                    f'<div class="answer-block">{answer_html(visible_text(streamed))}▌</div>',
+                                    unsafe_allow_html=True,
+                                )
+                            result = pipeline.finish(visible_text(streamed), citations)
                         else:
                             result: CitationResult = pipeline.query(
-                                question,
-                                top_k=top_k,
-                                strategy=strategy,
-                            )
-                            full_answer = result.answer
-                            citations = result.used_citations()
-                            answer_placeholder.markdown(
-                                f'<div class="answer-block">{full_answer}</div>',
-                                unsafe_allow_html=True
+                                question, top_k=top_k, strategy=strategy, history=history
                             )
 
-                        # Show citations
+                        full_answer = result.answer
+                        citations = result.used_citations()
+                        answer_placeholder.markdown(
+                            f'<div class="answer-block">{answer_html(full_answer)}</div>',
+                            unsafe_allow_html=True,
+                        )
+                        for w in warnings_for(result):
+                            st.warning(w)
+
                         if citations:
                             with citations_placeholder.expander(
                                 f"📎 {len(citations)} source(s) cited", expanded=True
@@ -385,7 +367,6 @@ else:
                                 for c in citations:
                                     st.markdown(render_citation_card(c), unsafe_allow_html=True)
 
-                        # Save to history
                         st.session_state.chat_history.append({
                             "question": question,
                             "answer":   full_answer,
