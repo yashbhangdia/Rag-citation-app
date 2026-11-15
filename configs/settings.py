@@ -29,10 +29,10 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="meta-llama/Llama-3.1-8B-Instruct", alias="LLM_MODEL")
     # Models used by the transformers backend (run on the Colab GPU)
     local_llm_model: str = Field(
-        default="Qwen/Qwen2.5-7B-Instruct", alias="LOCAL_LLM_MODEL"
+        default="Qwen/Qwen2.5-3B-Instruct", alias="LOCAL_LLM_MODEL"
     )
     local_llm_model_small: str = Field(
-        default="Qwen/Qwen2.5-3B-Instruct", alias="LOCAL_LLM_MODEL_SMALL"
+        default="Qwen/Qwen2.5-1.5B-Instruct", alias="LOCAL_LLM_MODEL_SMALL"
     )  # used when no CUDA GPU is available
     reranker_model: str = Field(
         default="cross-encoder/ms-marco-MiniLM-L-6-v2", alias="RERANKER_MODEL"
