@@ -19,7 +19,7 @@ question ──► (follow-up rewrite) ──► hybrid retrieval ──► cros
 | Verify | `[N]` outside the context is dropped; every figure in a cited sentence must literally appear in the cited chunk; relevance score checked; the citation snippet becomes the best-supporting sentence; figures with no citation are flagged | `src/utils/citation_builder.py` |
 
 ### LLM backends (`LLM_BACKEND`)
-* `transformers` (default) — Qwen2.5-7B-Instruct, 4-bit, in-process on a CUDA GPU (Colab T4). Falls back to Qwen2.5-3B without CUDA. No key.
+* `transformers` (default) — Qwen2.5-3B-Instruct (~6 GB download), 4-bit, in-process on a CUDA GPU (Colab T4). Falls back to Qwen2.5-1.5B without CUDA. No key. Set `LOCAL_LLM_MODEL=Qwen/Qwen2.5-7B-Instruct` for better answers (~15 GB download).
 * `hf_api` — HuggingFace Inference Providers with a free token (`HUGGINGFACEHUB_API_TOKEN`); subject to free-tier limits.
 
 ## Run on Colab (recommended)
@@ -49,5 +49,5 @@ python scripts/eval.py --generate   # + share of citations whose figures verify
 * Verification checks that figures **appear in the cited chunk** and that it is topically relevant. It cannot prove the sentence is *semantically* entailed by the passage, so ⚠️ means "check", ✅ means "figures found", not "guaranteed correct".
 * Scanned PDFs without a text layer are not OCR'd.
 * Tables are extracted as markdown by pymupdf4llm; very complex multi-column tables can still lose structure.
-* A 7B 4-bit model is weaker than frontier models at multi-step financial arithmetic — it is told to copy figures, not compute them.
+* A 3B 4-bit model is weaker than frontier models at multi-step financial arithmetic — it is told to copy figures, not compute them.
 * Fiscal-year filtering is left to the reranker (filename "FY2024-25" vs question "FY25" are different strings).
