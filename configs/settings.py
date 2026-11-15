@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # "hf_api":       HuggingFace Inference Providers (laptop use; free-tier limits).
     llm_backend: str = Field(default="transformers", alias="LLM_BACKEND")
     # Model used by the hf_api backend (Inference Providers)
-    llm_model: str = Field(default="Qwen/Qwen2.5-7B-Instruct", alias="LLM_MODEL")
+    llm_model: str = Field(default="meta-llama/Llama-3.1-8B-Instruct", alias="LLM_MODEL")
     # Models used by the transformers backend (run on the Colab GPU)
     local_llm_model: str = Field(
         default="Qwen/Qwen2.5-7B-Instruct", alias="LOCAL_LLM_MODEL"

@@ -58,3 +58,8 @@ def test_snippet_is_supporting_sentence():
 def test_visible_text_hides_think_blocks():
     assert visible_text("<think>hmm</think>Answer") == "Answer"
     assert visible_text("Answer <think>still thinking") == "Answer"
+
+
+def test_fiscal_year_labels_are_not_figures():
+    r = verify_citations(_result("Revenue was ₹2,40,893 crore in Q4 FY25 [1]."))
+    assert r.citations[0].verified is True

@@ -141,7 +141,7 @@ def parse_citations_from_answer(
 # ── Verification ─────────────────────────────────────────────────────────────
 
 _MARKER = re.compile(r"\[(\d+)\]")
-_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+_NUMBER = re.compile(r"(?<![A-Za-z\d])\d[\d,]*(?:\.\d+)?")  # not glued to letters: FY25, Q4
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z₹\[(\d])|\n+")
 _WORD = re.compile(r"[a-z0-9]+")
 

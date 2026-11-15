@@ -54,21 +54,36 @@ class HFApiLLM(BaseLLM):
         self._client = InferenceClient(model=self.model, token=self.token)
         logger.info(f"HFApiLLM ready — model: {self.model}")
 
+    def _call(self, messages: Messages, stream: bool, **kwargs):
+        from huggingface_hub.errors import HfHubHTTPError
+
+        try:
+            return self._client.chat_completion(
+                messages=messages,
+                max_tokens=kwargs.get("max_new_tokens", settings.max_new_tokens),
+                temperature=kwargs.get("temperature", 0.1),
+                stream=stream,
+            )
+        except HfHubHTTPError as exc:
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status == 402:
+                raise RuntimeError(
+                    "HuggingFace Inference credits are exhausted (402). Use "
+                    "LLM_BACKEND=transformers on a GPU (Colab notebook) instead."
+                ) from exc
+            if "model_not_supported" in str(exc):
+                raise RuntimeError(
+                    f"'{self.model}' is not served by any provider enabled on your HF "
+                    "account. Pick another LLM_MODEL (e.g. meta-llama/Llama-3.1-8B-Instruct)."
+                ) from exc
+            raise
+
     def generate(self, messages: Messages, **kwargs) -> str:
-        out = self._client.chat_completion(
-            messages=messages,
-            max_tokens=kwargs.get("max_new_tokens", settings.max_new_tokens),
-            temperature=kwargs.get("temperature", 0.1),
-        )
+        out = self._call(messages, False, **kwargs)
         return (out.choices[0].message.content or "").strip()
 
     def generate_stream(self, messages: Messages, **kwargs) -> Iterator[str]:
-        stream = self._client.chat_completion(
-            messages=messages,
-            max_tokens=kwargs.get("max_new_tokens", settings.max_new_tokens),
-            temperature=kwargs.get("temperature", 0.1),
-            stream=True,
-        )
+        stream = self._call(messages, True, **kwargs)
         for chunk in stream:
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
