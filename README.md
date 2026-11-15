@@ -24,7 +24,7 @@ question ──► (follow-up rewrite) ──► hybrid retrieval ──► cros
 
 ## Run on Colab (recommended)
 1. Push this repo to GitHub.
-2. Open `notebooks/finsight_colab.ipynb` in Colab, set **Runtime → T4 GPU**, run all cells. It clones the repo, installs `requirements-colab.txt`, stores the index and PDFs on your Drive, ingests, and opens a Gradio chat with a public link.
+2. Open `notebooks/finsight_colab.ipynb` in Colab, set **Runtime → T4 GPU**, run all cells. It clones the repo, installs `requirements-colab.txt`, keeps the index and PDFs on Colab's temporary disk (set `USE_DRIVE = True` to persist them on Google Drive instead), ingests, and opens a Gradio chat with a public link.
 3. Changed code locally? Push and re-run the first cell.
 
 ## Run locally
