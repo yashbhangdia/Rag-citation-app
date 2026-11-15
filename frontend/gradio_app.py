@@ -32,6 +32,17 @@ def sources_html(result) -> str:
     return "".join(parts)
 
 
+def _text(content) -> str:
+    """Gradio 6 stores message content as a list of blocks; flatten to a string."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, dict):
+        return str(content.get("text", ""))
+    if isinstance(content, (list, tuple)):
+        return " ".join(_text(c) for c in content).strip()
+    return str(content or "")
+
+
 def build_demo(pipeline, title: str = "FinSight AI — cited answers from filings") -> gr.Blocks:
     with gr.Blocks(title=title, css=CSS) as demo:
         gr.Markdown(f"## {title}\nEvery figure is cited to a page and checked against the source text.")
@@ -46,7 +57,7 @@ def build_demo(pipeline, title: str = "FinSight AI — cited answers from filing
         def respond(message, history, top_k, strategy):
             history = list(history or [])
             qa = [  # prior turns as {question, answer} for follow-up handling
-                {"question": history[i]["content"], "answer": history[i + 1]["content"]}
+                {"question": _text(history[i]["content"]), "answer": _text(history[i + 1]["content"])}
                 for i in range(0, len(history) - 1, 2)
                 if history[i]["role"] == "user" and history[i + 1]["role"] == "assistant"
             ]
