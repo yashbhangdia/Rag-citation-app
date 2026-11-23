@@ -2,3 +2,29 @@
 {"q": "What was TCS's revenue in Q4 FY25?", "company": "TCS", "expect_page": [4], "file": "TCS_QUARTERLY_RESULTS.pdf", "expect_text": "644,790"}
 {"q": "What was TCS's year-over-year revenue growth in FY 2025?", "company": "TCS", "expect_page": [22], "file": "TCS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "revenue growth of 6.0%"}
 {"q": "On which day do employees place bids in an OFS under the SEBI circular on offer for sale?", "company": "SEBI", "expect_page": [1, 2], "file": "SEBI_Circular_Mutual_Funds_FY2024.pdf", "expect_text": "cut-off price"}
+{"q": "What was HDFC Bank's employee attrition rate in FY25?", "company": "HDFC Bank", "expect_page": [52], "file": "HDFC_Bank_Annual_Report_FY2024-25.pdf", "expect_text": "22.60%"}
+{"q": "What dividend per share did HDFC Bank propose for FY25?", "company": "HDFC Bank", "expect_page": [52], "file": "HDFC_Bank_Annual_Report_FY2024-25.pdf", "expect_text": "22.0"}
+{"q": "What was HDFC Bank's capital adequacy ratio?", "company": "HDFC Bank", "expect_page": [52], "file": "HDFC_Bank_Annual_Report_FY2024-25.pdf", "expect_text": "19.6%"}
+{"q": "What was HDFC Bank's net NPA ratio in FY25?", "company": "HDFC Bank", "expect_page": [52], "file": "HDFC_Bank_Annual_Report_FY2024-25.pdf", "expect_text": "0.43%"}
+{"q": "What was HDFC Bank's profit after tax in FY25?", "company": "HDFC Bank", "expect_page": [52], "file": "HDFC_Bank_Annual_Report_FY2024-25.pdf", "expect_text": "67,347.4"}
+{"q": "What was HDFC Bank's net interest income in FY25?", "company": "HDFC Bank", "expect_page": [52], "file": "HDFC_Bank_Annual_Report_FY2024-25.pdf", "expect_text": "1,22,670.1"}
+{"q": "How many permanent employees did HDFC Bank have as of March 31, 2025?", "company": "HDFC Bank", "expect_page": [156], "file": "HDFC_Bank_Annual_Report_FY2024-25.pdf", "expect_text": "2,14,521"}
+{"q": "What was Infosys's consolidated revenue in FY25 in crore?", "company": "Infosys", "expect_page": [73], "file": "INFOSYS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "1,62,990"}
+{"q": "How much did Infosys's consolidated net profit grow to in FY25?", "company": "Infosys", "expect_page": [76], "file": "INFOSYS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "26,713"}
+{"q": "How many employees did Infosys have on a consolidated basis as of March 31, 2025?", "company": "Infosys", "expect_page": [37], "file": "INFOSYS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "3,23,578"}
+{"q": "What was Infosys's operating margin in FY25?", "company": "Infosys", "expect_page": [17], "file": "INFOSYS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "21.1%"}
+{"q": "What was Reliance's consolidated revenue in FY 2024-25?", "company": "Reliance", "expect_page": [4], "file": "RELIANCE_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "10,71,174"}
+{"q": "What was Reliance's consolidated EBITDA in FY 2024-25?", "company": "Reliance", "expect_page": [4], "file": "RELIANCE_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "1,83,422"}
+{"q": "What was Reliance's net profit in FY 2024-25?", "company": "Reliance", "expect_page": [4], "file": "RELIANCE_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "81,309"}
+{"q": "What was the O2C segment revenue for Reliance in FY 2024-25?", "company": "Reliance", "expect_page": [12], "file": "RELIANCE_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "6,26,921"}
+{"q": "What was TCS's IT services attrition in FY25?", "company": "TCS", "expect_page": [85], "file": "TCS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "13.3%"}
+{"q": "What were TCS's EBIT margins in FY 2025 versus the previous year?", "company": "TCS", "expect_page": [88], "file": "TCS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "24.6%"}
+{"q": "What total dividend per share did TCS declare for FY25?", "company": "TCS", "expect_page": [13], "file": "TCS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "126"}
+{"q": "What was TCS's closing headcount at the end of Q4 FY25?", "company": "TCS", "expect_page": [4], "file": "TCS_QUARTERLY_RESULTS.pdf", "expect_text": "607,979"}
+{"q": "What was TCS's operating margin in Q4 FY25?", "company": "TCS", "expect_page": [4], "file": "TCS_QUARTERLY_RESULTS.pdf", "expect_text": "24.2%"}
+{"q": "What was TCS's net income for FY25 in million rupees?", "company": "TCS", "expect_page": [8], "file": "TCS_QUARTERLY_RESULTS.pdf", "expect_text": "485,530"}
+{"q": "What was TCS's free cash flow in FY25?", "company": "TCS", "expect_page": [8], "file": "TCS_QUARTERLY_RESULTS.pdf", "expect_text": "464,490"}
+{"q": "Which SEBI circular number modified the OFS framework for employees, and when was it issued?", "company": "SEBI", "expect_page": [1], "file": "SEBI_Circular_Mutual_Funds_FY2024.pdf", "expect_text": "June 14, 2024"}
+{"q": "At whose cut-off price do employees place bids in an OFS after the June 2024 SEBI change?", "company": "SEBI", "expect_page": [2], "file": "SEBI_Circular_Mutual_Funds_FY2024.pdf", "expect_text": "cut-off price of T day"}
+{"q": "What total dividend per share did Infosys announce for FY25?", "company": "Infosys", "expect_page": [17], "file": "INFOSYS_ANNUAL_REPORT_FY2024-25.pdf", "expect_text": "43 per share"}
+{"q": "When do the provisions of the June 2024 SEBI OFS circular come into effect?", "company": "SEBI", "expect_page": [2], "file": "SEBI_Circular_Mutual_Funds_FY2024.pdf", "expect_text": "30[th] day"}

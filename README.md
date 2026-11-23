@@ -69,6 +69,8 @@ pytest tests/                   # unit tests (verification, retrieval, page numb
 python scripts/eval.py          # retrieval hit@k on eval/questions.jsonl
 python scripts/eval.py --generate   # + share of citations whose figures verify
 ```
+**Current result:** hit@5 = **18/30 (60%)** on 30 questions over the six sample filings (7,143 chunks). The match is strict (right file, right page *and* the expected figure), so figures that legitimately appear on several pages count as misses (e.g. HDFC Bank's attrition table on p.153 vs. the p.52 summary). Real weak spot: headline numbers in long reports can rank below narrative pages (Reliance). Improving this is the next step.
+
 `eval/questions.jsonl` is small — add questions (with the expected PDF page) for your own filings; it is only as good as that set.
 
 ## Known limits
