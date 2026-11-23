@@ -128,8 +128,11 @@ def parse_citations_from_answer(
     Given raw LLM answer and citation list, produce a CitationResult.
     Cleans up any stray formatting artifacts.
     """
-    # Normalize citation markers: [1], [1,2], [ 1 ] all become [1]
-    cleaned = re.sub(r"\[\s*(\d+)\s*\]", r"[\1]", answer)
+    # Normalize citation markers: [ 1 ] -> [1]; [1, 2] / [1,2,3] -> [1][2][3]
+    def _expand(m: "re.Match") -> str:
+        return "".join(f"[{n}]" for n in re.findall(r"\d+", m.group(0)))
+
+    cleaned = re.sub(r"\[\s*\d+(?:\s*,\s*\d+)*\s*\]", _expand, answer)
     return CitationResult(
         answer=cleaned.strip(),
         citations=citations,

@@ -74,6 +74,12 @@ class TestParseCitations:
         assert isinstance(result, CitationResult)
         assert result.cited_indices == [1, 2]
 
+    def test_expands_grouped_markers(self):
+        citations = build_citations([make_doc("a"), make_doc("b"), make_doc("c")])
+        result = parse_citations_from_answer("Revenue rose [1, 2] and [ 3 ].", citations)
+        assert result.answer == "Revenue rose [1][2] and [3]."
+        assert result.cited_indices == [1, 2, 3]
+
     def test_used_citations_filters(self):
         docs = [make_doc("S1"), make_doc("S2"), make_doc("S3")]
         citations = build_citations(docs)

@@ -1,0 +1,8 @@
+venv/
+.git/
+.env
+data/chroma_db/
+data/documents/**/*.pdf
+__pycache__/
+.pytest_cache/
+logs/

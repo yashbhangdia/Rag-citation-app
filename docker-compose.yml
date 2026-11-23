@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file: .env
+    environment:
+      LLM_BACKEND: hf_api   # no GPU in the container; needs HUGGINGFACEHUB_API_TOKEN in .env
+    volumes:
+      - ./data:/app/data

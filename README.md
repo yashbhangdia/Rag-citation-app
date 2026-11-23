@@ -1,5 +1,9 @@
 # 📊 FinSight AI — cited answers from Indian financial filings
 
+![CI](https://github.com/yashbhangdia/rag-citation-app/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.11-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 Ask questions about annual reports, quarterly results and SEBI/RBI circulars and get answers where **every figure is cited to a page and checked against the source text**. Free to run: open models on a Colab GPU, no paid API.
 
 ## How it works
@@ -35,6 +39,28 @@ cp .env.example .env            # set LLM_BACKEND=hf_api and a HF token on a lap
 python scripts/download_documents.py --all     # sample filings (PDFs are not committed)
 python scripts/ingest.py --dir data/documents
 streamlit run frontend/app.py   # or: python frontend/gradio_app.py
+```
+
+### Docker
+```bash
+cp .env.example .env   # set HUGGINGFACEHUB_API_TOKEN (the container has no GPU, so it uses LLM_BACKEND=hf_api)
+docker compose up --build   # http://localhost:8501
+```
+
+## Design decisions
+* **Hybrid retrieval (dense + BM25, fused with RRF).** Financial questions hinge on exact tokens (figures, company names) that embeddings blur; BM25 recovers them.
+* **Cross-encoder rerank after retrieval.** Retrieve 20 candidates cheaply, then score each (question, chunk) pair and keep the top `k`. The same scorer later checks that a cited chunk is relevant to the sentence citing it.
+* **Real PDF page numbers.** Pages come from `pymupdf4llm(page_chunks=True)` metadata, never from splitting text, so `[N] file, p.X` points at the true page.
+* **Verify, don't trust.** Out-of-range `[N]` markers are dropped, grouped markers like `[1, 2]` are expanded, and every figure in a cited sentence must literally appear in a cited chunk.
+* **Free by default.** Open models (Qwen2.5) on a Colab GPU; the HF Inference API is optional.
+
+## Project layout
+```
+configs/    settings (pydantic-settings, .env)
+src/ingestion/   loaders + chunker       src/retrieval/   vector store, hybrid retriever, reranker
+src/generation/  prompts, LLM backends, RAG pipeline       src/utils/   citation building + verification
+frontend/   Streamlit and Gradio apps    scripts/   ingest, download filings, eval
+eval/       question set                 tests/     pytest suite (run in CI)
 ```
 
 ## Quality checks
